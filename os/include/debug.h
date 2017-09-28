@@ -640,8 +640,6 @@ Once LOGM is approved, each module should have its own index
 #define i2cllvdbg(x...)
 #endif
 
-
-
 #ifdef CONFIG_NET_LWIP_DEBUG
 #define lwipdbg(format, ...)    dbg(format, ##__VA_ARGS__)
 #define lwiplldbg(format, ...)  lldbg(format, ##__VA_ARGS__)
@@ -1007,7 +1005,6 @@ Once LOGM is approved, each module should have its own index
 #define audvdbg		(void)
 #define audllvdbg	(void)
 #endif
-
 #endif							/* CONFIG_CPP_HAVE_VARARGS */
 
 /* Buffer dumping macros do not depend on varargs */
@@ -1132,17 +1129,18 @@ Once LOGM is approved, each module should have its own index
 extern "C" {
 #endif
 
-/* Dump a buffer of data */
 /**
- * @cond
- * @internal
+ * @ingroup DEBUG_KERNEL
+ * @brief  Dump a buffer of data
+ *
+ * @param[in] message for buffer dump
+ * @param[in] buffer
+ * @param[in] length for buffer
+ * @return void
+ * @since Tizen RT v1.1
  */
 
 void lib_dumpbuffer(FAR const char *msg, FAR const uint8_t *buffer, unsigned int buflen);
-
-/**
- * @endcond
- */
 
 /* The system logging interfaces are normally accessed via the macros
  * provided above.  If the cross-compiler's C pre-processor supports a

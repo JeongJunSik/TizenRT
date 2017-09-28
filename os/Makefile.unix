@@ -138,6 +138,15 @@ IOTIVITY_LIBS_DIR=$(EXTDIR)/iotivity/iotivity_$(IOTIVITY_RELEASE)/out/tizenrt/$(
 IOTIVITY_CONFIG_DIR=$(EXTDIR)/iotivity/iotivity_$(IOTIVITY_RELEASE)/resource/c_common
 endif
 
+ifeq ($(CONFIG_ENABLE_IOTJS),y)
+IOTJS_ROOT_DIR ?= $(EXTDIR)/iotjs
+ifeq ($(CONFIG_DEBUG),y)
+IOTJS_LIB_DIR = $(IOTJS_ROOT_DIR)/build/arm-tizenrt/debug/lib
+else
+IOTJS_LIB_DIR = $(IOTJS_ROOT_DIR)/build/arm-tizenrt/release/lib
+endif
+endif
+
 # Add-on directories.  These may or may not be in place in the
 # TinyAra source tree (they must be specifically installed)
 #
@@ -228,7 +237,9 @@ endif
 BIN_EXE = tinyara$(EXEEXT)
 BIN = $(BIN_DIR)/$(BIN_EXE)
 
-all: $(BIN) memstat
+memstat: $(BIN)
+
+all: memstat
 .PHONY: context clean_context check_context export subdir_clean clean subdir_distclean distclean apps_clean apps_distclean force_build applist appupdate
 
 # Target used to copy include/tinyara/math.h.  If CONFIG_ARCH_MATH_H is
@@ -574,7 +585,7 @@ gconfig: apps_preconfig
 # that the archiver is 'ar'
 
 export: pass2deps
-	$(Q) $(MKEXPORT) $(MKEXPORT_ARGS) -l "$(EXPORTLIBS)"
+	$(Q) MAKE=${MAKE} $(MKEXPORT) $(MKEXPORT_ARGS) -l "$(EXPORTLIBS)"
 
 # General housekeeping targets:  dependencies, cleaning, etc.
 #
