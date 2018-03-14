@@ -27,6 +27,8 @@
 
 #ifdef ENABLE_MALLOC_DEBUG
 static uint32_t count;
+static uint32_t peak_heap;
+static uint32_t cur_heap;
 #endif
 
 #ifdef ENABLE_THINGS_MALLOC
@@ -41,7 +43,11 @@ void *things_malloc(size_t size)
 #ifdef ENABLE_MALLOC_DEBUG
 	void *ptr = malloc(size);
 	count++;
-	THINGS_LOG_D(THINGS_DEBUG, TAG, "malloc: ptr=%p, size=%u, count=%u", ptr, size, count);
+	cur_heap += (int)*(int*)((char*)ptr-4*sizeof(int));
+	if ( peak_heap < cur_heap ) {
+		peak_heap = cur_heap;
+	}
+	THINGS_LOG_D(THINGS_DEBUG, TAG, "malloc: ptr=%p, size=%u, count=%u cur_heap : %u peak_heap : %u", ptr, size, count, cur_heap, peak_heap);
 	return ptr;
 #else
 	return malloc(size);
@@ -93,8 +99,9 @@ void things_free(void *ptr)
 	// guard the decrement:
 	if (ptr) {
 		count--;
+		cur_heap -= (int)*(int*)((char*)ptr-4*sizeof(int));
 	}
-	THINGS_LOG_D(THINGS_DEBUG, TAG, "free: ptr=%p, count=%u", ptr, count);
+	THINGS_LOG_D(THINGS_DEBUG, TAG, "malloc: ptr=%p, count=%u cur_heap : %u peak_heap : %u", ptr, count, cur_heap, peak_heap);
 #endif
 
 	free(ptr);
