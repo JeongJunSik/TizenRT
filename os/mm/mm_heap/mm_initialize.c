@@ -226,6 +226,12 @@ void mm_initialize(FAR struct mm_heap_s *heap, FAR void *heapstart, size_t heaps
 
 	mm_seminitialize(heap);
 
+	if(heap == mm_get_heap_info()) {
+		heap->iotivity_total_size = 0;
+		heap->st_things_total_size = 0;
+		heap->iotivity_peak_size = 0;
+		heap->st_things_peak_size = 0;
+		}
 	/* Add the initial region of memory to the heap */
 
 	mm_addregion(heap, heapstart, heapsize);

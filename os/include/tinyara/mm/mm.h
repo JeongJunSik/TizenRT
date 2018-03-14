@@ -318,6 +318,10 @@ struct mm_heap_s {
 #ifdef CONFIG_DEBUG_MM_HEAPINFO
 	size_t peak_alloc_size;
 	size_t total_alloc_size;
+	int iotivity_total_size;
+	int iotivity_peak_size;
+	int st_things_total_size;
+	int st_things_peak_size;
 #endif
 
 	/* This is the first and last nodes of the heap */
@@ -607,7 +611,7 @@ void heapinfo_update_node(FAR struct mm_allocnode_s *node, mmaddress_t caller_re
 
 void heapinfo_add_size(pid_t pid, mmsize_t size);
 void heapinfo_subtract_size(pid_t pid, mmsize_t size);
-void heapinfo_update_total_size(struct mm_heap_s *heap, mmsize_t size);
+void heapinfo_update_total_size(struct mm_heap_s *heap, mmsize_t size, void *addr);
 void heapinfo_exclude_stacksize(void *stack_ptr);
 #endif
 
