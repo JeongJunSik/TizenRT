@@ -184,6 +184,8 @@ void heapinfo_parse(FAR struct mm_heap_s *heap, int mode, pid_t pid)
 	printf("Largest Free Node Size         : %u\n", mxordblk);
 	printf("Number of Free Node            : %d\n", ordblks);
 	printf("\nStack Resources                : %u", stack_resource);
+	printf("\n\nIoTivity Peak Allocated Size : %d\n", heap->iotivity_peak_size);
+	printf("ST Things Peak Allocated Size : %d\n", heap->st_things_peak_size);
 
 	printf("\nNon Scheduled Task Resources   : %u\n", nonsched_resource);
 	if (mode != HEAPINFO_SIMPLE) {
@@ -239,11 +241,47 @@ void heapinfo_subtract_size(pid_t pid, mmsize_t size)
  * Description:
  * Calculate the total allocated size and update the peak allocated size for heap
  ****************************************************************************/
-void heapinfo_update_total_size(struct mm_heap_s *heap, mmsize_t size)
+void heapinfo_update_total_size(struct mm_heap_s *heap, mmsize_t size, void *addr)
 {
 	heap->total_alloc_size += size;
 	if (heap->total_alloc_size > heap->peak_alloc_size) {
 		heap->peak_alloc_size = heap->total_alloc_size;
+	}
+
+	char get_name[32];
+	pthread_t pid;
+	struct mm_allocnode_s *node = (struct mm_allocnode_s *)addr;
+	pid = node->pid;
+	pthread_getname_np(pid, get_name);
+	
+	if((strcmp(get_name, "IoT_MessageHandlerQueue") == 0)
+	|| (strcmp(get_name, "IoT_Retransmit") == 0)
+	|| (strcmp(get_name, "IoT_IPSendQueue") == 0)
+	|| (strcmp(get_name, "IoT_ReceiveHandler") == 0)
+	|| (strcmp(get_name, "IoT_TCPSendQueue") == 0)
+	|| (strcmp(get_name, "IoT_TCPReceive") == 0)
+	|| (strcmp(get_name, "IoT_userRequest") == 0))
+	{
+		heap->iotivity_total_size += size;
+		if(heap->iotivity_total_size > heap->iotivity_peak_size) {
+				heap->iotivity_peak_size = heap->iotivity_total_size;
+			}
+	} else if( (strcmp(get_name, "THINGS_STACK_PING") == 0) 
+	|| (strcmp(get_name, "THINGS_STACK_RESETLOOP") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_CICONN_INIT") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_CICONN_WAIT") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_WIFIPROV_SET") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_CLOUD_REFRESH") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_PRESENCE_NOTI") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_SERVEREXCE_LOOP") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_OICABORT") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_WIFI_JOIN") == 0)
+	|| (strcmp(get_name, "THINGS_STACK_UPDATE_THREAD") == 0))
+	{
+		heap->st_things_total_size += size;
+		if(heap->st_things_total_size > heap->st_things_peak_size) {
+				heap->st_things_peak_size = heap->st_things_total_size;
+			}		
 	}
 }
 
