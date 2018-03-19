@@ -682,7 +682,7 @@ static things_ping_s *create_things_ping_s(const char *remote_addr, const uint16
 		return NULL;
 	}
 
-	ping->addr = strdup(remote_addr);
+	ping->addr = things_strdup(remote_addr);
 	ping->port = port;
 	ping->continue_thread = false;
 	pthread_mutex_init(&ping->mutex_int, NULL);
