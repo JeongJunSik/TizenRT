@@ -854,8 +854,8 @@ static int parse_things_info_json(const char *filename)
 							THINGS_LOG_V(TAG, "[JSON]MNID exceeds %d bytes. please check (%d bytes are fixed sizes.)", MNID_LEN, MNID_LEN);
 							goto JSON_ERROR;
 						}
-						node->mnid = (char *) things_malloc(sizeof(char) * (strlen(mnid->valuestring) + 1));
-						strncpy(node->mnid, mnid->valuestring, strlen(mnid->valuestring) + 1);
+						node->mnid = (char *) things_malloc(sizeof(char) * MNID_LEN + 1);
+						strncpy(node->mnid, mnid->valuestring, MNID_LEN + 1);
 					} else {
 						THINGS_LOG_E(TAG, "[JSON]MNID is required");
 						goto JSON_ERROR;
