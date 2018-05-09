@@ -130,6 +130,7 @@
 #define MAX_CLOUD_ADDRESS           (256)	//   Need to match with the Cloud Spec.
 #define MAX_CLOUD_SESSIONKEY        (128)	//   Need to match with the Cloud Spec.
 #define MAX_SOFTAP_SSID             (33)
+#define MNID_LEN                    (4)
 
 typedef int8_t INT8;
 
@@ -761,7 +762,7 @@ static int parse_things_info_json(const char *filename)
 
 	THINGS_LOG_D(TAG, THINGS_FUNC_ENTRY);
 
-	int ret = 1;
+	int ret = 0;
 	char *json_str = get_json_string_from_file(filename);
 	cJSON *root = NULL;
 
@@ -775,7 +776,7 @@ static int parse_things_info_json(const char *filename)
 		// Device Items
 		cJSON *devices = cJSON_GetObjectItem(root, KEY_DEVICE);
 		if (devices == NULL) {
-			THINGS_LOG_D(TAG, "device is NULL");
+			THINGS_LOG_D(TAG, "[JSON]device is NULL");
 			ret = 0;
 			goto JSON_ERROR;
 		}
@@ -788,14 +789,13 @@ static int parse_things_info_json(const char *filename)
 
 		if (g_device_hmap == NULL) {
 			THINGS_LOG_V(TAG, "g_device_hmap is NULL");
-			ret = 0;
 			goto JSON_ERROR;
 		}
 
 		THINGS_LOG_D(TAG, "device_cnt of hashmap = %d", hashmap_count(g_device_hmap));
 
 		for (int device_num = 0; device_num < device_cnt; device_num++) {
-			THINGS_LOG_D(TAG, "[DEVICE] ============================================");
+			THINGS_LOG_D(TAG, "[JSON][DEVICE] ============================================");
 
 			node = create_device();
 			node->no = device_num;
@@ -813,12 +813,21 @@ static int parse_things_info_json(const char *filename)
 					if (device_type != NULL) {
 						node->type = (char *) things_malloc(sizeof(char) * (strlen(device_type->valuestring) + 1));
 						strncpy(node->type, device_type->valuestring, strlen(device_type->valuestring) + 1);
+					} else {
+						THINGS_LOG_E(TAG, "[JSON]deviceType is required");
+						goto JSON_ERROR;
 					}
 
 					if (device_name != NULL) {
 						node->name = (char *) things_malloc(sizeof(char) * (strlen(device_name->valuestring) + 1));
 						strncpy(node->name, device_name->valuestring, strlen(device_name->valuestring) + 1);
+					} else {
+						THINGS_LOG_E(TAG, "[JSON]deviceName is required");
+						goto JSON_ERROR;
 					}
+				} else {
+					THINGS_LOG_E(TAG, "[JSON]device is required");
+					goto JSON_ERROR;
 				}
 
 				cJSON *spec_platform = cJSON_GetObjectItem(specification, KEY_DEVICE_SPECIFICATION_PLATFORM);
@@ -841,13 +850,15 @@ static int parse_things_info_json(const char *filename)
 					}
 
 					if (mnid != NULL) {
-						if (strlen(mnid->valuestring) != 4) {
-							THINGS_LOG_V(TAG, "MNID exceeds 4 bytes. please check (4 bytes are fixed sizes.)");
-							ret = 0;
+						if (strnlen(mnid->valuestring, MNID_LEN + 1) != MNID_LEN) {
+							THINGS_LOG_V(TAG, "[JSON]MNID exceeds %d bytes. please check (%d bytes are fixed sizes.)", MNID_LEN, MNID_LEN);
 							goto JSON_ERROR;
 						}
 						node->mnid = (char *) things_malloc(sizeof(char) * (strlen(mnid->valuestring) + 1));
 						strncpy(node->mnid, mnid->valuestring, strlen(mnid->valuestring) + 1);
+					} else {
+						THINGS_LOG_E(TAG, "[JSON]MNID is required");
+						goto JSON_ERROR;
 					}
 					if (manufacturer_url != NULL) {
 						node->manufacturer_url = (char *) things_malloc(sizeof(char) * (strlen(manufacturer_url->valuestring) + 1));
@@ -889,7 +900,13 @@ static int parse_things_info_json(const char *filename)
 
 						g_vid = (char *) things_malloc(sizeof(char) * strlen(vid->valuestring) + 1);
 						strncpy(g_vid, vid->valuestring, strlen(vid->valuestring) + 1);
+					} else {
+						THINGS_LOG_E(TAG, "[JSON]VID is required");
+						goto JSON_ERROR;
 					}
+				} else {
+					THINGS_LOG_E(TAG, "[JSON]platform is required");
+					goto JSON_ERROR;
 				}
 			}
 			THINGS_LOG_D(TAG, "[DEVICE] No. : %d", (node->no));
@@ -910,15 +927,14 @@ static int parse_things_info_json(const char *filename)
 				cJSON *single = cJSON_GetObjectItem(resources, KEY_RESOURCES_SIG);
 				if (single != NULL) {
 					node->sig_cnt = cJSON_GetArraySize(single);
-					THINGS_LOG_D(TAG, "[DEVICE] Resources for Single Usage Cnt : %d", node->sig_cnt);
+					THINGS_LOG_D(TAG, "[JSON][DEVICE] Resources for Single Usage Cnt : %d", node->sig_cnt);
 
 					// Add 2 single resources for to support accesslist, provisioning.
 					/***** additional resource(provisininginfo / accesspointlist) *****/
 					int resCnt = sizeof(gstResources) / sizeof(things_resource_info_s);
 					node->single = (things_resource_info_s *)things_malloc(sizeof(things_resource_info_s) * (node->sig_cnt + resCnt));
 					if (node->single == NULL) {
-						THINGS_LOG_D(TAG, "[SINGLE] resource is NULL");
-						ret = 0;
+						THINGS_LOG_D(TAG, "[JSON][SINGLE] resource is NULL");
 						goto JSON_ERROR;
 					}
 
@@ -940,8 +956,7 @@ static int parse_things_info_json(const char *filename)
 									memcpy(node->single[iter].resource_types[typeiter], type->valuestring, strlen(type->valuestring) + 1);
 								}
 							} else {
-								THINGS_LOG_D(TAG, "[SINGLE] resource type is NULL");
-								ret = 0;
+								THINGS_LOG_D(TAG, "[JSON][SINGLE] resource type is NULL");
 								goto JSON_ERROR;
 							}
 							cJSON *interfaces = cJSON_GetObjectItem(res, KEY_DEVICE_RESOURCE_INTERFACES);
@@ -954,16 +969,14 @@ static int parse_things_info_json(const char *filename)
 									memcpy(node->single[iter].interface_types[ifiter], interface->valuestring, strlen(interface->valuestring) + 1);
 								}
 							} else {
-								THINGS_LOG_D(TAG, "[SINGLE] resource interface is NULL");
-								ret = 0;
+								THINGS_LOG_D(TAG, "[JSON][SINGLE] resource interface is NULL");
 								goto JSON_ERROR;
 							}
 							cJSON *policy = cJSON_GetObjectItem(res, KEY_DEVICE_RESOURCE_POLICY);
 							if (policy != NULL) {
 								node->single[iter].policy = policy->valueint;
 							} else {
-								THINGS_LOG_D(TAG, "[SINGLE] resource policy is NULL");
-								ret = 0;
+								THINGS_LOG_D(TAG, "[JSON][SINGLE] resource policy is NULL");
 								goto JSON_ERROR;
 							}
 
@@ -987,21 +1000,20 @@ static int parse_things_info_json(const char *filename)
 						node->single[node->sig_cnt].policy = gstResources[itr].policy;
 						node->sig_cnt++;
 					}
-					THINGS_LOG_V(TAG, "[SINGLE] Resources for Single Usage Cnt : %d", node->sig_cnt);
+					THINGS_LOG_V(TAG, "[JSON][SINGLE] Resources for Single Usage Cnt : %d", node->sig_cnt);
 				} else {
-					THINGS_LOG_V(TAG, "[SINGLE] Reosurces Not Exist");
+					THINGS_LOG_V(TAG, "[JSON][SINGLE] Reosurces Not Exist");
 				}
 #ifdef CONFIG_ST_THINGS_COLLECTION	
 				cJSON *collection = cJSON_GetObjectItem(resources, KEY_RESOURCES_COL);
 
 				if (collection != NULL) {
 					node->col_cnt = cJSON_GetArraySize(collection);
-					THINGS_LOG_D(TAG, "[DEVICE] Resources for Collection Cnt : %d", node->col_cnt);
+					THINGS_LOG_D(TAG, "[JSON][DEVICE] Resources for Collection Cnt : %d", node->col_cnt);
 
 					node->collection = (col_resource_s *) things_malloc(sizeof(col_resource_s) * node->col_cnt);
 					if (node->collection == NULL) {
-						THINGS_LOG_D(TAG, "[COLLECTION] resource is NULL");
-						ret = 0;
+						THINGS_LOG_D(TAG, "[JSON][COLLECTION] resource is NULL");
 						goto JSON_ERROR;
 					}
 
@@ -1010,7 +1022,7 @@ static int parse_things_info_json(const char *filename)
 						if (res->type != NULL) {
 							cJSON *uri = cJSON_GetObjectItem(res, KEY_DEVICE_RESOURCE_URI);
 							memcpy(node->collection[iter].uri, uri->valuestring, strlen(uri->valuestring) + 1);
-							THINGS_LOG_V(TAG, "[COLLECTION] collection[0].uri : %s", (node->collection[iter].uri));
+							THINGS_LOG_V(TAG, "[JSON][COLLECTION] collection[0].uri : %s", (node->collection[iter].uri));
 
 							cJSON *types = cJSON_GetObjectItem(res, KEY_DEVICE_RESOURCE_TYPES);
 							if (types) {
@@ -1020,11 +1032,10 @@ static int parse_things_info_json(const char *filename)
 									cJSON *type = cJSON_GetArrayItem(types, typeiter);
 									node->collection[iter].resource_types[typeiter] = things_malloc(sizeof(char) * strlen(type->valuestring) + 1);
 									memcpy(node->collection[iter].resource_types[typeiter], type->valuestring, strlen(type->valuestring) + 1);
-									THINGS_LOG_V(TAG, "[COLLECTION] collection[iter].resource_types[typeiter] : %s", (node->collection[iter].resource_types[typeiter]));
+									THINGS_LOG_V(TAG, "[JSON][COLLECTION] collection[iter].resource_types[typeiter] : %s", (node->collection[iter].resource_types[typeiter]));
 								}
 							} else {
-								THINGS_LOG_D(TAG, "[COLLECTION] resource type is NULL");
-								ret = 0;
+								THINGS_LOG_D(TAG, "[JSON][COLLECTION] resource type is NULL");
 								goto JSON_ERROR;
 							}
 
@@ -1038,20 +1049,18 @@ static int parse_things_info_json(const char *filename)
 									memcpy(node->collection[iter].interface_types[ifiter], interface->valuestring, strlen(interface->valuestring) + 1);
 								}
 							} else {
-								THINGS_LOG_D(TAG, "[COLLECTION] resource interface is NULL");
-								ret = 0;
+								THINGS_LOG_D(TAG, "[JSON][COLLECTION] resource interface is NULL");
 								goto JSON_ERROR;
 							}
 
 							cJSON *policy = cJSON_GetObjectItem(res, KEY_DEVICE_RESOURCE_POLICY);
 							if (policy == NULL) {
-								THINGS_LOG_E(TAG, "[COLLECTION] Fail to get collection[iter].policy");
-								ret = 0;
+								THINGS_LOG_E(TAG, "[JSON][COLLECTION] Fail to get collection[iter].policy");
 								goto JSON_ERROR;
 							}
 
 							node->collection[iter].policy = policy->valueint;
-							THINGS_LOG_V(TAG, "[COLLECTION] collection[iter].policy : %d", (node->collection[iter].policy));
+							THINGS_LOG_V(TAG, "[JSON][COLLECTION] collection[iter].policy : %d", (node->collection[iter].policy));
 
 							cJSON *links = cJSON_GetObjectItem(res, KEY_DEVICE_RESOURCE_COLLECTION_LINKS);
 							if (links != NULL) {
@@ -1060,7 +1069,7 @@ static int parse_things_info_json(const char *filename)
 								node->collection[iter].link_cnt = linkCnt;
 								node->collection[iter].links = (things_resource_info_s**)things_malloc(sizeof(things_resource_info_s*) * linkCnt);
 
-								THINGS_LOG_V(TAG, "[COLLECTION] collection[iter].link_cnt : %d", (node->collection[iter].link_cnt));
+								THINGS_LOG_V(TAG, "[JSON][COLLECTION] collection[iter].link_cnt : %d", (node->collection[iter].link_cnt));
 								for (int linkiter = 0; linkiter < linkCnt; linkiter++) {
 									cJSON *link = cJSON_GetArrayItem(links, linkiter);
 
@@ -1069,7 +1078,7 @@ static int parse_things_info_json(const char *filename)
 									cJSON *uri = cJSON_GetObjectItem(link, KEY_DEVICE_RESOURCE_URI);
 									if (uri != NULL) {
 										memcpy(link_resource->uri, uri->valuestring, strlen(uri->valuestring) + 1);
-										THINGS_LOG_V(TAG, "[COLLECTION] link_resource->uri : %s", (link_resource->uri));
+										THINGS_LOG_V(TAG, "[JSON][COLLECTION] link_resource->uri : %s", (link_resource->uri));
 									}
 
 									cJSON *types = cJSON_GetObjectItem(link, KEY_DEVICE_RESOURCE_TYPES);
@@ -1082,8 +1091,7 @@ static int parse_things_info_json(const char *filename)
 											memcpy(link_resource->resource_types[typeiter], type->valuestring, strlen(type->valuestring) + 1);
 										}
 									} else {
-										THINGS_LOG_V(TAG, "[COLLECTION] resource type is NULL");
-										ret = 0;
+										THINGS_LOG_V(TAG, "[JSON][COLLECTION] resource type is NULL");
 										goto JSON_ERROR;
 									}
 									cJSON *interfaces = cJSON_GetObjectItem(link, KEY_DEVICE_RESOURCE_INTERFACES);
@@ -1096,8 +1104,7 @@ static int parse_things_info_json(const char *filename)
 											memcpy(link_resource->interface_types[ifiter], interface->valuestring, strlen(interface->valuestring) + 1);
 										}
 									} else {
-										THINGS_LOG_V(TAG, "[COLLECTION] resource interface is NULL");
-										ret = 0;
+										THINGS_LOG_V(TAG, "[JSON][COLLECTION] resource interface is NULL");
 										goto JSON_ERROR;
 									}
 									cJSON *policy = cJSON_GetObjectItem(link, KEY_DEVICE_RESOURCE_POLICY);
@@ -1105,14 +1112,12 @@ static int parse_things_info_json(const char *filename)
 										link_resource->policy = policy->valueint;
 										node->collection[iter].links[linkiter] = link_resource;
 									} else {
-										THINGS_LOG_V(TAG, "[COLLECTION] resource policy is NULL");
-										ret = 0;
+										THINGS_LOG_V(TAG, "[JSON][COLLECTION] resource policy is NULL");
 										goto JSON_ERROR;
 									}
 								}
 							} else {
-								THINGS_LOG_V(TAG, "[COLLECTION] link is NULL");
-								ret = 0;
+								THINGS_LOG_V(TAG, "[JSON][COLLECTION] link is NULL");
 								goto JSON_ERROR;
 							}
 						}
@@ -1126,11 +1131,11 @@ static int parse_things_info_json(const char *filename)
 					THINGS_LOG_V(TAG, "[COLLECTION] link_cnt. : %d", node->collection[0].link_cnt);
 					THINGS_LOG_V(TAG, "[COLLECTION] policy. : %d", node->collection[0].policy);
 				} else {
-					THINGS_LOG_V(TAG, "Children Reosurces Not Exist");
+					THINGS_LOG_E(TAG, "[JSON]Children Reosurces Not Exist");
 				}
 #endif
 			} else {
-				THINGS_LOG_V(TAG, "Reosurces Not Exist");
+				THINGS_LOG_E(TAG, "[JSON]Reosurces Not Exist");
 			}
 			hashmap_insert(g_device_hmap, node, (unsigned long)device_num);
 		}
@@ -1185,7 +1190,7 @@ static int parse_things_info_json(const char *filename)
 							restype->prop[iter2]->rw = rw->valueint;
 						}
 					} else {
-						THINGS_LOG_E(TAG, "Not Attribute Exist~!!!! ");
+						THINGS_LOG_E(TAG, "[JSON]Not Attribute Exist~!!!! ");
 					}
 					hashmap_insert(g_resource_type_hmap, restype, index);
 				}
@@ -1211,7 +1216,7 @@ static int parse_things_info_json(const char *filename)
 				if (connectivity != NULL) {
 					cJSON *type = cJSON_GetObjectItem(connectivity, KEY_CONFIGURATION_EASYSETUP_CONNECTIVITY_TYPE);
 					connectivity_type = type->valueint;
-					THINGS_LOG_V(TAG, "[configuration] type       : %d", connectivity_type);
+					THINGS_LOG_V(TAG, "[JSON][configuration] type       : %d", connectivity_type);
 					if (connectivity_type == 1) {
 						es_conn_type = es_conn_type_softap;
 						cJSON *softap = cJSON_GetObjectItem(connectivity, KEY_CONFIGURATION_EASYSETUP_CONNECTIVITY_SOFTAP);
@@ -1221,8 +1226,7 @@ static int parse_things_info_json(const char *filename)
 
 							if (setup_id != NULL) {
 								if (strlen(setup_id->valuestring) != 3) {
-									THINGS_LOG_V(TAG, "setup_id exceeds 3 bytes. please check (3 bytes are fixed sizes.)");
-									ret = 0;
+									THINGS_LOG_V(TAG, "[JSON]setup_id exceeds 3 bytes. please check (3 bytes are fixed sizes.)");
 									goto JSON_ERROR;
 								}
 								is_artik = false;
@@ -1238,8 +1242,7 @@ static int parse_things_info_json(const char *filename)
 								g_setup_id = things_malloc(sizeof(char) * strlen(setup_id->valuestring) + 1);
 								strncpy(g_setup_id, setup_id->valuestring, strlen(setup_id->valuestring) + 1);
 							} else {
-								THINGS_LOG_V(TAG, "[configuration] setup_id is NULL");
-								ret = 0;
+								THINGS_LOG_V(TAG, "[JSON][configuration] setup_id is NULL");
 								goto JSON_ERROR;								
 							}
 						}
@@ -1247,13 +1250,11 @@ static int parse_things_info_json(const char *filename)
 						//TO DO
 						es_conn_type = es_conn_type_ble;
 					} else {
-						THINGS_LOG_V(TAG, "[configuration] connectivity_type is unknown");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON][configuration] connectivity_type is unknown");
 						goto JSON_ERROR;
 					}
 				} else {
-					THINGS_LOG_V(TAG, "[configuration] connectivity_type is unknown");
-					ret = 0;
+					THINGS_LOG_E(TAG, "[JSON][configuration] connectivity_type is unknown");
 					goto JSON_ERROR;
 				}
 
@@ -1262,8 +1263,7 @@ static int parse_things_info_json(const char *filename)
 					g_ownership_transfer_method = ownership_transfer_method->valueint;
 					THINGS_LOG_V(TAG, "[configuration] ownership_transfer_method : %d", g_ownership_transfer_method);
 				} else {
-					THINGS_LOG_V(TAG, "connectivity is NULL");
-					ret = 0;
+					THINGS_LOG_E(TAG, "[JSON]connectivity is NULL");
 					goto JSON_ERROR;
 				}
 
@@ -1283,16 +1283,14 @@ static int parse_things_info_json(const char *filename)
 					} else if (wifi_frequency->valueint == 3) {
 						g_wifi_freq = WiFi_BOTH;
 					} else {
-						THINGS_LOG_V(TAG, "unknown wifi freq value");
+						THINGS_LOG_E(TAG, "[JSON]unknown wifi freq value");
 					}
 				} else {
-					THINGS_LOG_V(TAG, "[configuration] wifi_interfaces is NULL or wifi_frequency is NULL");
-					ret = 0;
+					THINGS_LOG_E(TAG, "[JSON][configuration] wifi_interfaces is NULL or wifi_frequency is NULL");
 					goto JSON_ERROR;
 				}
 			} else {
-				THINGS_LOG_V(TAG, "[configuration] wifi is NULL");
-				ret = 0;
+				THINGS_LOG_E(TAG, "[JSON][configuration] wifi is NULL");
 				goto JSON_ERROR;
 			}
 			cJSON *file_path = cJSON_GetObjectItem(configuration, KEY_CONFIGURATION_FILEPATH);
@@ -1303,23 +1301,19 @@ static int parse_things_info_json(const char *filename)
 				cJSON *privateKey = cJSON_GetObjectItem(file_path, KEY_CONFIGURATION_FILEPATH_PRIVATEKEY);
 
 				if (svrdb == NULL) {
-					THINGS_LOG_V(TAG, "[svrdb] svrdb file not found");
-					ret = 0;
+					THINGS_LOG_E(TAG, "[JSON][svrdb] svrdb file not found");
 					goto JSON_ERROR;
 				}
 				if (provisioning == NULL) {
-					THINGS_LOG_V(TAG, "[provisioning] provisioning file not found");
-					ret = 0;
+					THINGS_LOG_E(TAG, "[JSON][provisioning] provisioning file not found");
 					goto JSON_ERROR;
 				}
 				if (certificate == NULL) {
-					THINGS_LOG_V(TAG, "[certificate] User certificate file not found");
-					ret = 0;
+					THINGS_LOG_E(TAG, "[JSON][certificate] User certificate file not found");
 					goto JSON_ERROR;
 				}				
 				if (privateKey == NULL) {
-					THINGS_LOG_V(TAG, "[privateKey] User certificate file not found");
-					ret = 0;
+					THINGS_LOG_E(TAG, "[JSON][privateKey] User certificate file not found");
 					goto JSON_ERROR;
 				}
 
@@ -1329,15 +1323,13 @@ static int parse_things_info_json(const char *filename)
 
 				if (strncmp(svrdb->valuestring, "/", 1) == 0) {
 					if (strlen(svrdb->valuestring) > (size_t)MAX_FILE_PATH_LENGTH) {
-						THINGS_LOG_V(TAG, "svrdb file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]svrdb file path length exceeded");
 						goto JSON_ERROR;
 					}
 					memcpy(g_svrdb_file_path, svrdb->valuestring, strlen(svrdb->valuestring));					
 				} else {
 					if (strlen(svrdb->valuestring) > (size_t)MAX_FILE_PATH_LENGTH - strlen(PATH_MNT)) {
-						THINGS_LOG_V(TAG, "svrdb file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]svrdb file path length exceeded");
 						goto JSON_ERROR;
 					}
 					strcpy(g_svrdb_file_path, PATH_MNT);
@@ -1346,15 +1338,13 @@ static int parse_things_info_json(const char *filename)
 
 				if (strncmp(provisioning->valuestring, "/", 1) == 0) {
 					if (strlen(provisioning->valuestring) > (size_t)MAX_CLOUD_ADDRESS) {
-						THINGS_LOG_V(TAG, "provisioning file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]provisioning file path length exceeded");
 						goto JSON_ERROR;
 					}
 					memcpy(g_things_cloud_file_path, provisioning->valuestring, strlen(provisioning->valuestring));
 				} else {
 					if (strlen(provisioning->valuestring) > (size_t)MAX_CLOUD_ADDRESS - strlen(PATH_MNT)) {
-						THINGS_LOG_V(TAG, "provisioning file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]provisioning file path length exceeded");
 						goto JSON_ERROR;
 					}
 					strcpy(g_things_cloud_file_path, PATH_MNT);
@@ -1363,33 +1353,28 @@ static int parse_things_info_json(const char *filename)
 
 				if (strncmp(certificate->valuestring, "/", 1) == 0) {
 					if (strlen(certificate->valuestring) > (size_t)MAX_FILE_PATH_LENGTH) {
-						THINGS_LOG_V(TAG, "certificate file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]certificate file path length exceeded");
 						goto JSON_ERROR;
 					}
 					memcpy(g_certificate_file_path, certificate->valuestring, strlen(certificate->valuestring));
 				} else {
 					if (strlen(certificate->valuestring) > (size_t)MAX_FILE_PATH_LENGTH - strlen(PATH_ROM)) {
-						THINGS_LOG_V(TAG, "certificate file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]certificate file path length exceeded");
 						goto JSON_ERROR;
 					}
 					strcpy(g_certificate_file_path, PATH_ROM);
 					strcat(g_certificate_file_path, certificate->valuestring);
 				}
 
-
 				if (strncmp(privateKey->valuestring, "/", 1) == 0) {
 					if (strlen(privateKey->valuestring) > (size_t)MAX_FILE_PATH_LENGTH) {
-						THINGS_LOG_V(TAG, "privateKey file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]privateKey file path length exceeded");
 						goto JSON_ERROR;
 					}
 					memcpy(g_private_key_file_path, privateKey->valuestring, strlen(privateKey->valuestring));
 				} else {
 					if (strlen(privateKey->valuestring) > (size_t)MAX_FILE_PATH_LENGTH - strlen(PATH_ROM)) {
-						THINGS_LOG_V(TAG, "privateKey file path length exceeded");
-						ret = 0;
+						THINGS_LOG_E(TAG, "[JSON]privateKey file path length exceeded");
 						goto JSON_ERROR;
 					}
 					strcpy(g_private_key_file_path, PATH_ROM);
@@ -1400,17 +1385,13 @@ static int parse_things_info_json(const char *filename)
 				THINGS_LOG_V(TAG, "[configuration] svrdb : %s / provisioning : %s", svrdb->valuestring, provisioning->valuestring);
 				THINGS_LOG_V(TAG, "[configuration] certificate : %s / privateKey : %s", certificate->valuestring, privateKey->valuestring);
 			} else {
-				THINGS_LOG_V(TAG, "file_path is NULL");			
-				ret = 0;
+				THINGS_LOG_E(TAG, "[JSON]file_path is NULL");
 				goto JSON_ERROR;
 			}
 		}
 	}
 
-	if (parse_things_cloud_json(g_things_cloud_file_path) == 0) {
-		THINGS_LOG_D(THINGS_ERROR, TAG, "cloud data parsing error");			
-	}
-
+	ret = parse_things_cloud_json(g_things_cloud_file_path);
 JSON_ERROR:
 	if (root != NULL) {
 		cJSON_Delete(root);
