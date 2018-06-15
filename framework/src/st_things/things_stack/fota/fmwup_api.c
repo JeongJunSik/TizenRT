@@ -163,6 +163,30 @@ int fmwup_check_firmware_upgraded(void)
 	return FMWUP_ERROR_NONE;
 }
 
+#include <pthread.h>
+#include "utils/things_rtos_util.h"
+typedef void *(*pthread_func_type)(void *);
+static pthread_t h_thread_things_download = NULL;
+
+
+static void *t_things_download_loop(void *args)
+{
+
+	fmwup_http_check_firmware();
+	return NULL;
+}
+
+
+int fmwup_check_firmware(void)
+{
+	THINGS_LOG_D(TAG, THINGS_FUNC_ENTRY);
+
+	pthread_create_rtos(&h_thread_things_download, NULL, (pthread_func_type)t_things_download_loop, NULL, THGINS_STACK_FOTA_UPDATE_THREAD);
+	
+
+	return 0;
+}
+
 int fmwup_initialize(void)
 {
 	THINGS_LOG_D(TAG, THINGS_FUNC_ENTRY);

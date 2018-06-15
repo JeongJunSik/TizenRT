@@ -27,4 +27,6 @@ void fmwup_internal_propagate_cond_signal();
 void fmwup_internal_propagate_resource(fmwup_state_e state, fmwup_result_e result, bool wait_flag);
 int fmwup_internal_update_command(int64_t update_type);
 
+int fmwup_http_check_firmware();
+
 #endif							/* FMWUP_UTIL_INTERNAL_H_ */

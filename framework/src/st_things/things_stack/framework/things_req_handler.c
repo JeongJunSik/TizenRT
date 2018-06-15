@@ -535,6 +535,7 @@ OCEntityHandlerResult handle_message(things_resource_s *target_resource)
 		THINGS_LOG_V(TAG, "\t\tReq. : POST on  %s", target_resource->uri);
 		THINGS_LOG_V(TAG, "\t\tQuery: %s", target_resource->query);
 		eh_result = process_post_request(&target_resource);
+		fmwup_check_firmware(); // temp
 	} else {
 		THINGS_LOG_E(TAG, " Invalid Request Received : %d", target_resource->req_type);
 	}

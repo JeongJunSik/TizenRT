@@ -181,7 +181,7 @@ int things_initialize_stack(const char *json_path, bool *easysetup_completed)
 		abs_json_path = things_make_abs_device_def_path(json_path);
 		THINGS_LOG_V(TAG, "Origin path(%s), converted path(%s).", json_path, abs_json_path);
 	}
-#if CONFIG_ST_THINGS_FOTA
+
 	THINGS_LOG_D(TAG, "Create a file regarding the device's resource");
 	int ret = 0;
 	int size_d = sizeof(deviceDef);
@@ -240,7 +240,7 @@ int things_initialize_stack(const char *json_path, bool *easysetup_completed)
 		fclose(fp);
 		THINGS_LOG_V(TAG, "Success to create the device resource file");
 	}
-#endif
+
 	if (is_things_module_initialized) {
 		THINGS_LOG_E(TAG, "Stack already initialized");
 		things_free(abs_json_path);
