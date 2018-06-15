@@ -163,6 +163,15 @@ int fmwup_check_firmware_upgraded(void)
 	return FMWUP_ERROR_NONE;
 }
 
+int fmwup_check_firmware(void)
+{
+	THINGS_LOG_D(TAG, THINGS_FUNC_ENTRY);
+
+	fmwup_http_check_firmware();
+
+	
+}
+
 int fmwup_initialize(void)
 {
 	THINGS_LOG_D(TAG, THINGS_FUNC_ENTRY);

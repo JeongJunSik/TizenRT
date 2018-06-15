@@ -143,6 +143,9 @@ static char *g_firmware_version;
 static char *g_vendor_id;
 static char *g_model_number;
 
+static char *g_cloud_access_token;
+static char *g_cloud_uid;
+
 static char *g_manufacturer_name;
 static char *g_setup_id;
 static bool is_artik;
@@ -648,6 +651,18 @@ static int load_cloud_signup_data(cJSON *json, es_cloud_signup_s **cl_data)
 	get_json_string(server_id, &((*cl_data)->sid));
 	get_json_string(domain, &((*cl_data)->domain));
 	get_json_string(port, &((*cl_data)->port));
+
+	if (g_cloud_access_token != 0) {
+		things_free(g_cloud_access_token);
+	}	
+	g_cloud_access_token = (char *) things_malloc(sizeof(char) * strlen(accesstoken->valuestring) + 1);
+	strncpy(g_cloud_access_token, accesstoken->valuestring, strlen(accesstoken->valuestring) + 1);
+
+	if (g_cloud_uid != 0) {
+		things_free(g_cloud_access_token);
+	}	
+	g_cloud_uid = (char *) things_malloc(sizeof(char) * strlen(user_id->valuestring) + 1);
+	strncpy(g_cloud_uid, user_id->valuestring, strlen(user_id->valuestring) + 1);
 
 	if (res == -1) {
 		es_cloud_signup_clear(*cl_data);
@@ -2285,3 +2300,14 @@ char *dm_get_model_number()
 {
 	return g_model_number;
 }
+
+char *dm_get_access_token()
+{
+	return g_cloud_access_token;
+}
+
+char *dm_get_uid()
+{
+	return g_cloud_uid;
+}
+

@@ -81,6 +81,8 @@ int fmwup_set_data(things_resource_s *target_res);
 
 int fmwup_check_firmware_upgraded(void);
 
+int fmwup_check_firmware(void);
+
 int fmwup_initialize(void);
 
 #ifdef __cplusplus

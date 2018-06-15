@@ -56,10 +56,12 @@
 #ifdef CONFIG_ST_THINGS_FOTA
 #include "fota/fmwup_api.h"
 #include "deviceDef.h"
-#define DEVICE_DEF_FILE_ROOT PATH_MNT
+//#define DEVICE_DEF_FILE_ROOT PATH_MNT
 #else
-#define DEVICE_DEF_FILE_ROOT PATH_ROM
+//#define DEVICE_DEF_FILE_ROOT PATH_ROM
 #endif
+
+#define DEVICE_DEF_FILE_ROOT PATH_ROM
 
 #define TAG "[things_stack]"
 
@@ -184,7 +186,7 @@ int things_initialize_stack(const char *json_path, bool *easysetup_completed)
 		abs_json_path = things_make_abs_device_def_path(json_path);
 		THINGS_LOG_V(TAG, "Origin path(%s), converted path(%s).", json_path, abs_json_path);
 	}
-#if CONFIG_ST_THINGS_FOTA
+#if 0
 	THINGS_LOG_D(TAG, "Create a file regarding the device's resource");
 	int ret = 0;
 	int size_d = sizeof(deviceDef);
